@@ -1,3 +1,9 @@
+__WARNING__
+
+This library was modified to help discover services with the same descriptions but from different host. Use with caution.
+
+If you are looking for real zeroconf library maybe try this one: [cpuchip/zeroconf](https://github.com/cpuchip/zeroconf)
+
 ZeroConf: Service Discovery with mDNS
 =====================================
 ZeroConf is a pure Golang library that employs Multicast DNS-SD for

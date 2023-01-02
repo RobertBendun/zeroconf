@@ -1,4 +1,4 @@
-module github.com/cpuchip/zeroconf/v2
+module github.com/RobertBendun/zeroconf/v2
 
 go 1.16
 

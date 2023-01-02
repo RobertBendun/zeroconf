@@ -177,8 +177,12 @@ func (c *client) mainloop(ctx context.Context, params *lookupParams) {
 	}
 
 	// Iterate through channels from listeners goroutines
-	var entries map[string]*ServiceEntry
-	sentEntries := make(map[string]*ServiceEntry)
+	type serviceHost struct {
+		name string
+		host string
+	}
+	var entries map[serviceHost]*ServiceEntry
+	sentEntries := make(map[serviceHost]*ServiceEntry)
 
 	ticker := time.NewTicker(cleanupFreq)
 	defer ticker.Stop()
@@ -199,7 +203,7 @@ func (c *client) mainloop(ctx context.Context, params *lookupParams) {
 			continue
 		case msg := <-msgCh:
 			now = time.Now()
-			entries = make(map[string]*ServiceEntry)
+			entries = make(map[serviceHost]*ServiceEntry)
 			sections := append(msg.Answer, msg.Ns...)
 			sections = append(sections, msg.Extra...)
 
@@ -212,42 +216,45 @@ func (c *client) mainloop(ctx context.Context, params *lookupParams) {
 					if params.ServiceInstanceName() != "" && params.ServiceInstanceName() != rr.Ptr {
 						continue
 					}
-					if _, ok := entries[rr.Ptr]; !ok {
-						entries[rr.Ptr] = newServiceEntry(
+					key := serviceHost{rr.Ptr, ""}
+					if _, ok := entries[key]; !ok {
+						entries[key] = newServiceEntry(
 							trimDot(strings.Replace(rr.Ptr, rr.Hdr.Name, "", -1)),
 							params.Service,
 							params.Domain)
 					}
-					entries[rr.Ptr].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
+					entries[key].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
 				case *dns.SRV:
 					if params.ServiceInstanceName() != "" && params.ServiceInstanceName() != rr.Hdr.Name {
 						continue
 					} else if !strings.HasSuffix(rr.Hdr.Name, params.ServiceName()) {
 						continue
 					}
-					if _, ok := entries[rr.Hdr.Name]; !ok {
-						entries[rr.Hdr.Name] = newServiceEntry(
+					key := serviceHost{rr.Hdr.Name, rr.Target}
+					if _, ok := entries[key]; !ok {
+						entries[key] = newServiceEntry(
 							trimDot(strings.Replace(rr.Hdr.Name, params.ServiceName(), "", 1)),
 							params.Service,
 							params.Domain)
 					}
-					entries[rr.Hdr.Name].HostName = rr.Target
-					entries[rr.Hdr.Name].Port = int(rr.Port)
-					entries[rr.Hdr.Name].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
+					entries[key].HostName = rr.Target
+					entries[key].Port = int(rr.Port)
+					entries[key].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
 				case *dns.TXT:
 					if params.ServiceInstanceName() != "" && params.ServiceInstanceName() != rr.Hdr.Name {
 						continue
 					} else if !strings.HasSuffix(rr.Hdr.Name, params.ServiceName()) {
 						continue
 					}
-					if _, ok := entries[rr.Hdr.Name]; !ok {
-						entries[rr.Hdr.Name] = newServiceEntry(
+					key := serviceHost{rr.Hdr.Name, ""}
+					if _, ok := entries[key]; !ok {
+						entries[key] = newServiceEntry(
 							trimDot(strings.Replace(rr.Hdr.Name, params.ServiceName(), "", 1)),
 							params.Service,
 							params.Domain)
 					}
-					entries[rr.Hdr.Name].Text = rr.Txt
-					entries[rr.Hdr.Name].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
+					entries[key].Text = rr.Txt
+					entries[key].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
 				}
 			}
 			// Associate IPs in a second round as other fields should be filled by now.

@@ -9,7 +9,7 @@ import (
 
 	"time"
 
-	"github.com/cpuchip/zeroconf/v2"
+	"github.com/RobertBendun/zeroconf/v2"
 )
 
 var (
