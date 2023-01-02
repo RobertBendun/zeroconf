@@ -209,21 +209,6 @@ func (c *client) mainloop(ctx context.Context, params *lookupParams) {
 
 			for _, answer := range sections {
 				switch rr := answer.(type) {
-				case *dns.PTR:
-					if params.ServiceName() != rr.Hdr.Name {
-						continue
-					}
-					if params.ServiceInstanceName() != "" && params.ServiceInstanceName() != rr.Ptr {
-						continue
-					}
-					key := serviceHost{rr.Ptr, ""}
-					if _, ok := entries[key]; !ok {
-						entries[key] = newServiceEntry(
-							trimDot(strings.Replace(rr.Ptr, rr.Hdr.Name, "", -1)),
-							params.Service,
-							params.Domain)
-					}
-					entries[key].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
 				case *dns.SRV:
 					if params.ServiceInstanceName() != "" && params.ServiceInstanceName() != rr.Hdr.Name {
 						continue
@@ -239,21 +224,6 @@ func (c *client) mainloop(ctx context.Context, params *lookupParams) {
 					}
 					entries[key].HostName = rr.Target
 					entries[key].Port = int(rr.Port)
-					entries[key].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
-				case *dns.TXT:
-					if params.ServiceInstanceName() != "" && params.ServiceInstanceName() != rr.Hdr.Name {
-						continue
-					} else if !strings.HasSuffix(rr.Hdr.Name, params.ServiceName()) {
-						continue
-					}
-					key := serviceHost{rr.Hdr.Name, ""}
-					if _, ok := entries[key]; !ok {
-						entries[key] = newServiceEntry(
-							trimDot(strings.Replace(rr.Hdr.Name, params.ServiceName(), "", 1)),
-							params.Service,
-							params.Domain)
-					}
-					entries[key].Text = rr.Txt
 					entries[key].Expiry = now.Add(time.Duration(rr.Hdr.Ttl) * time.Second)
 				}
 			}
